@@ -1,7 +1,7 @@
 % TEMPERATE_SOUNDING Script to perform analysis and figure generation for MacGregor et al. (in review, The Cryosphere Discussions).
 %
 % Joe MacGregor (NASA/GSFC)
-% Last updated: 3 January 2020
+% Last updated: 5 January 2020
 
 clear
 
@@ -26,8 +26,8 @@ for ii = find(~isnan(GTD_T.SURVEY_DATE))'
     GTD_T.SURVEY_YEAR(ii)   = str2double(tmp_str(1:4)); % extract survey year
 end
 
-% read in CSV file with survey frequency in MHz
-GTD_T_freq                  = readtable([dir_GTD 'T_freq.csv']);
+% read in CSV file with survey frequency in MHz and updated survey method (adjusted to include GPRh, helicopter-based sounding)
+GTD_T_freq_meth             = readtable([dir_GTD 'T_freq_meth.csv']);
 
 % add in missing mean/max thickness values from GlaThiDa raw database (TTT), mostly relevant to WISE data
 GTD_T_adj                   = struct('MAXIMUM_THICKNESS', GTD_T.MAXIMUM_THICKNESS);
@@ -53,8 +53,17 @@ idx_GTD_temperate           = setdiff(idx_GTD_temperate, find((GTD_T.LON >= -112
 idx_GTD_temperate           = setdiff(idx_GTD_temperate, find(strcmp(GTD_T.GLACIER_NAME, 'HAZARD'))); % exclude Hazard Glacier, based on Narod and Clarke (1980) using UHF over identified cold/polar ice
 
 % temperate glacier surveys done by radar for which a maximum thickness is available
-idx_GTD_temperate_radar_good= intersect(idx_GTD_temperate, find(~isnan(GTD_T_freq.SURVEY_FREQUENCY) & ~isnan(GTD_T_adj.MAXIMUM_THICKNESS)));
+idx_GTD_temperate_radar_good= intersect(idx_GTD_temperate, find(~isnan(GTD_T_freq_meth.SURVEY_FREQUENCY) & contains(GTD_T_freq_meth.SURVEY_METHOD, {'GPRt' 'GPRh' 'GPRa'}) & ~isnan(GTD_T_adj.MAXIMUM_THICKNESS)));
 num_GTD_temperate_radar_good= length(idx_GTD_temperate_radar_good);
+
+% number by survey type
+num_GTD_temperate_radar_ground ...
+                            = length(find(contains(GTD_T_freq_meth.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRt')));
+num_GTD_temperate_radar_helo ...
+                            = length(find(contains(GTD_T_freq_meth.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRh')));
+num_GTD_temperate_radar_fixed_wing ...
+                            = length(find(contains(GTD_T_freq_meth.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRa')));
+
 
 %% ALL RGI PREDICTED THICKNESS ANALYSIS
 
@@ -82,7 +91,7 @@ RGI_str                     = {'01 Alaska';
                                '19 Antarctic periphery / Subantarctic'};
 num_RGI_reg                 = length(RGI_str);
 
-idx_RGI_temperate           = setdiff(1:num_RGI_reg, [3:5 7 9 19]); % regions assumed to contain temperate glaciers
+idx_RGI_temperate           = setdiff(1:num_RGI_reg, [3:5 7 9 19]); % exclude regions assumed to contain mostly polar or polythermal glaciers
 
 % RGI region directory names
 RGI_set                     = dir(dir_RGI);
@@ -213,14 +222,14 @@ GTD_RGI_diff_thick_std      = std(diff(GTD_F19_thick_max_cat((GTD_match_type <= 
 if plotting
 
 %% GLATHIDA FREQUENCY VS. MAXIMUM THICKNESS MEASURED
-
+    
     year_range              = 1970:10:2020;
     colors                  = [1 1 1; flipud(hot(length(year_range)))];
     colors                  = [colors(2, :); 1 1 0.8; colors(4:end, :)];
     idx_GTD_year_color      = 1 + discretize(GTD_T.SURVEY_YEAR, year_range);
     idx_GTD_year_color(isnan(idx_GTD_year_color)) ...
                             = 1;
-    [~, idx_ord]            = sort(GTD_T.SURVEY_YEAR(idx_GTD_temperate), 'ascend');
+    [~, idx_ord]            = sort(GTD_T.SURVEY_YEAR(idx_GTD_temperate_radar_good), 'ascend');
     figure('position', [100 100 960 540], 'color', 'w')
     colormap(colors)
     hold on
@@ -228,25 +237,17 @@ if plotting
     ax                      = gca;
     fill(ax.XLim([1 2 1]), ax.YLim([2 1 1]), [0.9 0.9 1], 'linestyle', 'none', 'facealpha', 0.5)
     plot([1 1e3], [1.5e3 0], 'b--', 'linewidth', 1)
-    idx_shown               = 0;
-    for ii = idx_GTD_temperate(idx_ord)
-        if any(isnan([GTD_T_freq.SURVEY_FREQUENCY(ii) GTD_T_adj.MAXIMUM_THICKNESS(ii)]))
-            continue
-        end
-        switch GTD_T.SURVEY_METHOD{ii}
-            case {'GPR' 'GPRt'}
-                line(GTD_T_freq.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), 'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
-                idx_shown   = idx_shown + 1;
-            case 'GPRh'
-                line(GTD_T_freq.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'o', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), 'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
-                idx_shown   = idx_shown + 1;
-            case 'GPRa'
-                line(GTD_T_freq.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), 'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
-                idx_shown   = idx_shown + 1;
-            case {'SEI' 'GEL' 'DRIh' 'DRIm'} % explicitly list cases for non-radar type that we don't want to plot, e.g., Taku has a center frequency but maximum thickess is from seismics
-            otherwise
-                line(GTD_T_freq.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), 'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
-                idx_shown   = idx_shown + 1;
+    for ii = idx_GTD_temperate_radar_good(idx_ord)'
+        switch GTD_T_freq_meth.SURVEY_METHOD{ii}
+            case 'GPRt' % "towed", i.e., ground-based
+                line(GTD_T_freq_meth.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
+                                                                                            'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
+            case 'GPRh' % helicopter-based, new distinction for this study
+                line(GTD_T_freq_meth.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'o', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
+                                                                                            'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
+            case 'GPRa' % "airborne", specified by this study to mean fixed-wing
+                line(GTD_T_freq_meth.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
+                                                                                            'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
         end
     end
     line(3.5, 440, 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 12, 'markerfacecolor', colors(end, :), 'tag', 'Pritchard et al. (2020, Annals of Glaciology)') 
