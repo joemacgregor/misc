@@ -1,7 +1,7 @@
 % TEMPERATE_SOUNDING Script to perform analysis and figure generation for MacGregor et al. (in review, The Cryosphere Discussions).
 %
 % Joe MacGregor (NASA/GSFC)
-% Last updated: 5 January 2020
+% Last updated: 14 January 2020
 
 clear
 
@@ -26,8 +26,8 @@ for ii = find(~isnan(GTD_T.SURVEY_DATE))'
     GTD_T.SURVEY_YEAR(ii)   = str2double(tmp_str(1:4)); % extract survey year
 end
 
-% read in CSV file with survey frequency in MHz and updated survey method (adjusted to include GPRh, helicopter-based sounding)
-GTD_T_freq_meth             = readtable([dir_GTD 'T_freq_meth.csv']);
+% read in CSV file supplementing GlaThiDa with survey frequency in MHz, updated survey method (adjusted to include GPRh, helicopter-based sounding)
+GTD_T_supp                  = readtable([dir_GTD 'T_supplement.csv']);
 
 % add in missing mean/max thickness values from GlaThiDa raw database (TTT), mostly relevant to WISE data
 GTD_T_adj                   = struct('MAXIMUM_THICKNESS', GTD_T.MAXIMUM_THICKNESS);
@@ -51,19 +51,25 @@ idx_GTD_temperate           = setdiff(1:num_GTD_T,       find(abs(GTD_T.LAT) >= 
 idx_GTD_temperate           = setdiff(idx_GTD_temperate, find(ismember(GTD_T.POLITICAL_UNIT, {'AQ' 'GL' 'SJ'}))); % exclude Antarctica, Greenland, Svalbard, non-western Canada based on political unit/country
 idx_GTD_temperate           = setdiff(idx_GTD_temperate, find((GTD_T.LON >= -112) & ismember(GTD_T.POLITICAL_UNIT, 'CA'))); % exclude Arctic Canada based on longitude
 idx_GTD_temperate           = setdiff(idx_GTD_temperate, find(strcmp(GTD_T.GLACIER_NAME, 'HAZARD'))); % exclude Hazard Glacier, based on Narod and Clarke (1980) using UHF over identified cold/polar ice
+idx_GTD_temperate           = setdiff(idx_GTD_temperate, find(strcmp(GTD_T.GLACIER_NAME, 'GORNER'))); % exclude Gornergletscher, which has been previously identified as polythermal
+idx_GTD_temperate           = setdiff(idx_GTD_temperate, find(strcmp(GTD_T.GLACIER_NAME, 'KHUK NURU UUL'))); % exclude Khukh Nuru Uul, which has been previously identified as cold (Herren et al., 2013, QSR)
 
-% temperate glacier surveys done by radar for which a maximum thickness is available
-idx_GTD_temperate_radar_good= intersect(idx_GTD_temperate, find(~isnan(GTD_T_freq_meth.SURVEY_FREQUENCY) & contains(GTD_T_freq_meth.SURVEY_METHOD, {'GPRt' 'GPRh' 'GPRa'}) & ~isnan(GTD_T_adj.MAXIMUM_THICKNESS)));
+% temperate region glacier surveys done by radar for which a maximum thickness is available
+idx_GTD_temperate_radar_good= intersect(idx_GTD_temperate, find(~isnan(GTD_T_supp.SURVEY_FREQUENCY) & contains(GTD_T_supp.SURVEY_METHOD, {'GPRt' 'GPRh' 'GPRa'}) & ~isnan(GTD_T_adj.MAXIMUM_THICKNESS)));
 num_GTD_temperate_radar_good= length(idx_GTD_temperate_radar_good);
 
 % number by survey type
 num_GTD_temperate_radar_ground ...
-                            = length(find(contains(GTD_T_freq_meth.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRt')));
+                            = length(find(contains(GTD_T_supp.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRt')));
 num_GTD_temperate_radar_helo ...
-                            = length(find(contains(GTD_T_freq_meth.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRh')));
+                            = length(find(contains(GTD_T_supp.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRh')));
 num_GTD_temperate_radar_fixed_wing ...
-                            = length(find(contains(GTD_T_freq_meth.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRa')));
+                            = length(find(contains(GTD_T_supp.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRa')));
 
+% indices of non-temperate surveys
+idx_GTD_other_ground        = setdiff(find(~isnan(GTD_T_supp.SURVEY_FREQUENCY) & contains(GTD_T_supp.SURVEY_METHOD, 'GPRt') & ~isnan(GTD_T_adj.MAXIMUM_THICKNESS)), idx_GTD_temperate)';
+idx_GTD_other_helo          = setdiff(find(~isnan(GTD_T_supp.SURVEY_FREQUENCY) & contains(GTD_T_supp.SURVEY_METHOD, 'GPRh') & ~isnan(GTD_T_adj.MAXIMUM_THICKNESS)), idx_GTD_temperate)';
+idx_GTD_other_fixed_wing    = setdiff(find(~isnan(GTD_T_supp.SURVEY_FREQUENCY) & contains(GTD_T_supp.SURVEY_METHOD, 'GPRa') & ~isnan(GTD_T_adj.MAXIMUM_THICKNESS)), idx_GTD_temperate)';
 
 %% ALL RGI PREDICTED THICKNESS ANALYSIS
 
@@ -107,7 +113,7 @@ for ii = idx_RGI_temperate
     if (ii < 10) % add leading zero if less than 10
         RGI_str_curr        = ['0' RGI_str_curr]; %#ok<AGROW>
     end
-    RGI{ii}                 = shaperead([dir_RGI RGI_set{contains(RGI_set, RGI_str_curr)} '/' RGI_set{contains(RGI_set, RGI_str_curr)} '.shp'], 'Attributes', {'Area' 'CenLat', 'CenLon', 'Name' 'RGIId'}); % load from sub-directory for each region
+    RGI{ii}                 = shaperead([dir_RGI RGI_set{contains(RGI_set, RGI_str_curr)} '/' RGI_set{contains(RGI_set, RGI_str_curr)} '.shp'], 'Attributes', {'Area' 'CenLat', 'CenLon', 'Name' 'RGIId', 'Zmed'}); % load from sub-directory for each region
     RGI{ii}                 = rmfield(RGI{ii}, {'BoundingBox' 'Geometry' 'X' 'Y'}); % don't need glacier outlines or most geographic information, so remove to save memory
     for jj = 1:length(RGI{ii})
         RGI{ii}(jj).RGIIdNum= str2double(RGI{ii}(jj).RGIId((end - 4):end)); % generate integer value RGI ID number
@@ -207,6 +213,7 @@ for ii = 1:num_GTD_temperate_radar_good
     end
 end
 
+% concatenate measured/modeled thicknesses
 GTD_F19_thick_max_cat       = NaN(num_GTD_temperate_radar_good, 2);
 GTD_RGI_area                = NaN(1, num_GTD_temperate_radar_good);
 for ii = find(~isnan(GTD_RGIId))
@@ -215,6 +222,7 @@ for ii = find(~isnan(GTD_RGIId))
     GTD_RGI_area(ii)        = RGI{reg_GTD_RGI(ii)}(GTD_RGIId(ii)).Area; % RGI area for identified glaciers
 end
 
+% mean and standard deviation for well-matched measured/modeled thicknesses
 GTD_RGI_diff_thick_mean     = mean(diff(GTD_F19_thick_max_cat((GTD_match_type <= 3), :), [], 2), 'omitnan');
 GTD_RGI_diff_thick_std      = std(diff(GTD_F19_thick_max_cat((GTD_match_type <= 3), :), [], 2), 'omitnan');
 
@@ -235,18 +243,28 @@ if plotting
     hold on
     axis([1 1e3 0 1.5e3])
     ax                      = gca;
-    fill(ax.XLim([1 2 1]), ax.YLim([2 1 1]), [0.9 0.9 1], 'linestyle', 'none', 'facealpha', 0.5)
-    plot([1 1e3], [1.5e3 0], 'b--', 'linewidth', 1)
+    fill(ax.XLim([1 2 2]), ax.YLim([2 1 2]), [0.9 0.9 1], 'linestyle', 'none', 'facealpha', 0.5)
+    fill(ax.XLim([1 2 1]), ax.YLim([2 1 1]), [1 0.9 0.9], 'linestyle', 'none', 'facealpha', 0.5)
+    for ii = idx_GTD_other_ground
+        line(GTD_T_supp.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 8, 'markerfacecolor', [0.9 0.9 1])
+    end
+    for ii = idx_GTD_other_helo
+        line(GTD_T_supp.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'o', 'markersize', 8, 'markerfacecolor', [0.9 0.9 1])
+    end
+    for ii = idx_GTD_other_fixed_wing
+        line(GTD_T_supp.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 8, 'markerfacecolor', [0.9 0.9 1])
+    end
+    line([1 1e3], [1.5e3 0], 'color', 'k', 'linestyle', '--', 'linewidth', 2)
     for ii = idx_GTD_temperate_radar_good(idx_ord)'
-        switch GTD_T_freq_meth.SURVEY_METHOD{ii}
+        switch GTD_T_supp.SURVEY_METHOD{ii}
             case 'GPRt' % "towed", i.e., ground-based
-                line(GTD_T_freq_meth.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
+                line(GTD_T_supp.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
                                                                                             'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
             case 'GPRh' % helicopter-based, new distinction for this study
-                line(GTD_T_freq_meth.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'o', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
+                line(GTD_T_supp.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', 'o', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
                                                                                             'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
             case 'GPRa' % "airborne", specified by this study to mean fixed-wing
-                line(GTD_T_freq_meth.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
+                line(GTD_T_supp.SURVEY_FREQUENCY(ii), GTD_T_adj.MAXIMUM_THICKNESS(ii), 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 12, 'markerfacecolor', colors(idx_GTD_year_color(ii), :), ...
                                                                                             'tag', [num2str(ii) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(ii)) ' ' GTD_T.GLACIER_NAME{ii}])
         end
     end
@@ -256,15 +274,17 @@ if plotting
     pg                      = plot(NaN, NaN, 'kv', 'linewidth', 0.5, 'markersize', 12);
     ph                      = plot(NaN, NaN, 'ko', 'linewidth', 0.5, 'markersize', 12);
     pa                      = plot(NaN, NaN, 'k^', 'linewidth', 0.5, 'markersize', 12);
+    pht                     = plot(NaN, NaN, 'ko', 'linewidth', 0.5, 'markersize', 12, 'markerfacecolor', colors((end - 1), :));
+    phc                     = plot(NaN, NaN, 'ko', 'linewidth', 0.5, 'markersize', 8, 'markerfacecolor', [0.9 0.9 1]);
     caxis([1 (length(year_range) + 1)])
     set(gca, 'fontsize', 20, 'fontweight', 'bold', 'xscale', 'log', 'xticklabel', {'1' '10' '100' '1000'}, 'linewidth', 1)
     xlabel('Center frequency (MHz)')
     ylabel({'Maximum ice thickness measured (m)'})
-    lg                      = legend([pa ph pg], 'fixed-wing', 'helicopter', 'ground');
-    set(lg, 'location', 'northeast', 'fontsize', 20)
+    lg1                      = legend([pa ph pg pht phc], 'fixed-wing', 'helicopter', 'ground', 'temperate', 'cold');
+    set(lg1, 'location', 'northeast', 'fontsize', 20)
     colorbar('yticklabel', {'unknown' '1970' '1980' '1990' '2000' '2010' '2018'}, 'ticklength', 0.035, 'fontsize', 20, 'color', 'k')
     text(3.5112e3, 0.9409e3, 'Survey year', 'color', 'k', 'fontsize', 20, 'fontweight', 'bold', 'rotation', 270)
-    text(43.9, 794, {'empirical envelope of'; 'maximum measurable thickness'}, 'color', 'b', 'fontsize', 20, 'fontweight', 'bold', 'rotation', -33)    
+    text(2.2, 1445, {'empirical envelope of'; 'maximum measurable thickness'}, 'color', 'k', 'fontsize', 20, 'fontweight', 'bold', 'rotation', -33)    
     grid on
     box on
     
@@ -286,33 +306,53 @@ if plotting
     thick_int               = 25; % thickness bin interval
     thick_max               = 1500; % maximum thickness to consider
     thick_bin               = 0:thick_int:thick_max; % thickness bin vector
-    figure('position', [100 100 960 540], 'color', 'w', 'renderer', 'painters')
-    subplot('position', [0.13 0.12 0.78 0.75])
-    hold on
-    pm                      = length(idx_RGI_temperate);
-    for ii = fliplr(1:length(idx_RGI_temperate))
-        histogram(thick_F19_max{idx_RGI_temperate(ii)}(idx_F19_large{idx_RGI_temperate(ii)}), thick_bin, 'normalization', 'probability', 'displaystyle', 'stairs', 'edgecolor', colors(ii, :), 'linewidth', 3)
-        pm(ii)              = line(NaN, NaN, 'color', colors(ii, :), 'linewidth', 3);
-    end
-    axis([0 thick_max 0 0.25])
-    set(gca, 'fontsize', 20, 'fontweight', 'bold', 'xtick', 0:100:1500, 'ytick', 0:0.05:0.25, 'yticklabel', 0:5:25)
-    xlabel('Maximum modeled ice thickness (m)')
-    ylabel({'Fraction of glaciers ≥ 5 km^2'; 'within RGI region (%)'})
-    grid on
-    axes('position', get(gca, 'position'), 'color', 'none', 'xaxislocation', 'top', 'yaxislocation', 'right', 'fontsize', 20, 'fontweight', 'bold', 'xscale', 'log', 'xdir', 'reverse', 'yticklabel', {})
-    xlabel('Maximum plausible center frequency (MHz)')
-    axis([1e0 1e3 0 0.25])
-    set(gca, 'xticklabel', {'1' '10' '100' '1000'}, 'linewidth', 1)
-    lg_str                  = RGI_str(idx_RGI_temperate);
-    for ii = 1:length(idx_RGI_temperate)
-        if (ii == 1)
-            lg_str{ii}     = [lg_str{ii} ' [n = ' num2str(length(idx_F19_large{idx_RGI_temperate(ii)})) ']'];            
-        else
-            lg_str{ii}     = [lg_str{ii} ' [' num2str(length(idx_F19_large{idx_RGI_temperate(ii)})) ']'];
+    letters                 = 'a':'b';
+    ylims                   = [4e2 2e3];
+    ylabels                 = {'Number of glaciers ≥ 5 km^2' 'Cumulative number of glaciers ≥ 5 km^2'};
+    typ                     = [650 4000];
+    figure('position', [100 100 1920 540], 'color', 'w', 'renderer', 'painters')
+    for ii = 1:2
+        subplot('position', [(0.08 + (0.50 * (ii - 1))) 0.12 0.39 0.75])
+        hold on
+        pm                      = length(idx_RGI_temperate);
+        for jj = fliplr(1:length(idx_RGI_temperate))
+            switch ii
+                case 1
+                    histogram(thick_F19_max{idx_RGI_temperate(jj)}(idx_F19_large{idx_RGI_temperate(jj)}), thick_bin, 'normalization', 'count', 'displaystyle', 'stairs', 'edgecolor', colors(jj, :), 'linewidth', 3)
+                case 2
+                    h = histogram(thick_F19_max{idx_RGI_temperate(jj)}(idx_F19_large{idx_RGI_temperate(jj)}), thick_bin, 'normalization', 'cumcount', 'displaystyle', 'stairs', 'edgecolor', colors(jj, :), 'linewidth', 3);
+            end
+            pm(jj)              = line(NaN, NaN, 'color', colors(jj, :), 'linewidth', 3);
+        end
+        axis([0 thick_max 0 ylims(ii)])
+        set(gca, 'fontsize', 20, 'fontweight', 'bold', 'xtick', 0:100:1500, 'yscale', 'log');
+        switch ii
+            case 1
+                set(gca, 'ytick', [1 10 100 400], 'yticklabel', [1 10 100 400])
+            case 2
+                set(gca, 'ytick', [1 10 100 1000 2000], 'yticklabel', [1 10 100 1000 2000])
+        end     
+        xlabel('Maximum modeled ice thickness (m)')
+        ylabel(ylabels{ii})
+        text(-200, typ(ii), ['(' letters(ii) ')'], 'fontsize', 20, 'fontweight', 'bold')
+        grid on
+        axes('position', get(gca, 'position'), 'color', 'none', 'xaxislocation', 'top', 'yaxislocation', 'right', 'fontsize', 20, 'fontweight', 'bold', 'xscale', 'log', 'xdir', 'reverse', 'yticklabel', {})
+        xlabel('Maximum plausible center frequency (MHz)')
+        axis([1e0 1e3 0 ylims(ii)])
+        set(gca, 'xticklabel', {'1' '10' '100' '1000'}, 'linewidth', 1)
+        if (ii == 2)
+            lg_str                  = RGI_str(idx_RGI_temperate);
+            for jj = 1:length(idx_RGI_temperate)
+                if (jj == 1)
+                    lg_str{jj}     = [lg_str{jj} ' [n = ' num2str(length(idx_F19_large{idx_RGI_temperate(jj)})) ']'];
+                else
+                    lg_str{jj}     = [lg_str{jj} ' [' num2str(length(idx_F19_large{idx_RGI_temperate(jj)})) ']'];
+                end
+            end
+            lg                      = legend(pm, lg_str);
+            set(lg, 'location', 'southeast', 'fontsize', 18)
         end
     end
-    lg                      = legend(pm, lg_str);
-    set(lg, 'location', 'east', 'fontsize', 18)
 
 %%
 end
