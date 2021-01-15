@@ -1,7 +1,7 @@
 % TEMPERATE_SOUNDING Script to perform analysis and figure generation for MacGregor et al. (in review, The Cryosphere Discussions).
 %
 % Joe MacGregor (NASA/GSFC)
-% Last updated: 14 January 2020
+% Last updated: 15 January 2020
 
 clear
 
@@ -61,8 +61,7 @@ num_GTD_temperate_radar_good= length(idx_GTD_temperate_radar_good);
 % number by survey type
 num_GTD_temperate_radar_ground ...
                             = length(find(contains(GTD_T_supp.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRt')));
-num_GTD_temperate_radar_helo ...
-                            = length(find(contains(GTD_T_supp.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRh')));
+num_GTD_temperate_radar_helo= length(find(contains(GTD_T_supp.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRh')));
 num_GTD_temperate_radar_fixed_wing ...
                             = length(find(contains(GTD_T_supp.SURVEY_METHOD(idx_GTD_temperate_radar_good), 'GPRa')));
 
@@ -307,38 +306,35 @@ if plotting
     thick_max               = 1500; % maximum thickness to consider
     thick_bin               = 0:thick_int:thick_max; % thickness bin vector
     letters                 = 'a':'b';
-    ylims                   = [4e2 2e3];
-    ylabels                 = {'Number of glaciers ≥ 5 km^2' 'Cumulative number of glaciers ≥ 5 km^2'};
-    typ                     = [650 4000];
-    figure('position', [100 100 1920 540], 'color', 'w', 'renderer', 'painters')
+    y_letters               = [800 5000];
+    y_max                   = [4e2 2e3];
+    ylabels                 = {'Number of larger glaciers' 'Cumulative number of larger glaciers'};
+    norm_type               = {'count' 'cumcount'};
+    figure('position', [100 100 1700 540], 'color', 'w', 'renderer', 'painters')
     for ii = 1:2
-        subplot('position', [(0.08 + (0.50 * (ii - 1))) 0.12 0.39 0.75])
+        subplot('position', [(0.05 + (0.50 * (ii - 1))) 0.12 0.42 0.75])
         hold on
         pm                      = length(idx_RGI_temperate);
         for jj = fliplr(1:length(idx_RGI_temperate))
-            switch ii
-                case 1
-                    histogram(thick_F19_max{idx_RGI_temperate(jj)}(idx_F19_large{idx_RGI_temperate(jj)}), thick_bin, 'normalization', 'count', 'displaystyle', 'stairs', 'edgecolor', colors(jj, :), 'linewidth', 3)
-                case 2
-                    h = histogram(thick_F19_max{idx_RGI_temperate(jj)}(idx_F19_large{idx_RGI_temperate(jj)}), thick_bin, 'normalization', 'cumcount', 'displaystyle', 'stairs', 'edgecolor', colors(jj, :), 'linewidth', 3);
-            end
+            histogram(thick_F19_max{idx_RGI_temperate(jj)}(idx_F19_large{idx_RGI_temperate(jj)}), thick_bin, 'normalization', norm_type{ii}, 'displaystyle', 'stairs', 'edgecolor', colors(jj, :), 'linewidth', 3)
             pm(jj)              = line(NaN, NaN, 'color', colors(jj, :), 'linewidth', 3);
         end
-        axis([0 thick_max 0 ylims(ii)])
+        axis([0 thick_max 1 y_max(ii)])
         set(gca, 'fontsize', 20, 'fontweight', 'bold', 'xtick', 0:100:1500, 'yscale', 'log');
         switch ii
             case 1
-                set(gca, 'ytick', [1 10 100 400], 'yticklabel', [1 10 100 400])
+                set(gca, 'ytick', [1 10 100 400])
             case 2
-                set(gca, 'ytick', [1 10 100 1000 2000], 'yticklabel', [1 10 100 1000 2000])
-        end     
+                set(gca, 'ytick', [1 10 100 1000 2000])
+        end
+        set(gca, 'yticklabel', get(gca, 'ytick'))
         xlabel('Maximum modeled ice thickness (m)')
         ylabel(ylabels{ii})
-        text(-200, typ(ii), ['(' letters(ii) ')'], 'fontsize', 20, 'fontweight', 'bold')
+        text(-150, y_letters(ii), ['(' letters(ii) ')'], 'fontsize', 20, 'fontweight', 'bold')
         grid on
-        axes('position', get(gca, 'position'), 'color', 'none', 'xaxislocation', 'top', 'yaxislocation', 'right', 'fontsize', 20, 'fontweight', 'bold', 'xscale', 'log', 'xdir', 'reverse', 'yticklabel', {})
+        axes('position', get(gca, 'position'), 'color', 'none', 'xaxislocation', 'top', 'yaxislocation', 'right', 'fontsize', 20, 'fontweight', 'bold', 'xscale', 'log', 'xdir', 'reverse', 'yscale', 'log', 'yticklabel', {})
         xlabel('Maximum plausible center frequency (MHz)')
-        axis([1e0 1e3 0 ylims(ii)])
+        axis([1e0 1e3 1 y_max(ii)])
         set(gca, 'xticklabel', {'1' '10' '100' '1000'}, 'linewidth', 1)
         if (ii == 2)
             lg_str                  = RGI_str(idx_RGI_temperate);
@@ -349,8 +345,7 @@ if plotting
                     lg_str{jj}     = [lg_str{jj} ' [' num2str(length(idx_F19_large{idx_RGI_temperate(jj)})) ']'];
                 end
             end
-            lg                      = legend(pm, lg_str);
-            set(lg, 'location', 'southeast', 'fontsize', 18)
+            legend(pm, lg_str, 'location', 'southeast', 'fontsize', 18)
         end
     end
 
