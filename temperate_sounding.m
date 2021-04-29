@@ -1,7 +1,9 @@
-% TEMPERATE_SOUNDING Script to perform analysis and figure generation for MacGregor et al. (in review, The Cryosphere Discussions).
-%
+% TEMPERATE_SOUNDING Script to perform analysis and figure generation for
+% MacGregor et al. (in revision, The Cryosphere Discussions,
+% https://doi.org/10.5194/tc-2021-26).
+% 
 % Joe MacGregor (NASA/GSFC)
-% Last updated: 22 March 2021
+% Last updated: 29 April 2021
 
 clear
 
@@ -9,9 +11,9 @@ clear
 plotting                    = false; % do plots
 
 % directories
-dir_GTD                     = '/glathida-3.1.0/data/'; % GlaThiDa v3.1.0 directory
-dir_F19                     = '/consensus_thickness/'; % Farinotti et al. (2019, Nature Geoscience) GeoTIFF directory, with sub-directories by RGI Level-1 region
-dir_RGI                     = '/00_rgi60/'; % Randolph Glacier Inventory version 6 directory, with sub-directories by RGI Level-1 region
+dir_GTD                     = 'glathida-3.1.0/data/'; % GlaThiDa v3.1.0 directory
+dir_F19                     = 'consensus_thickness/'; % Farinotti et al. (2019, Nature Geoscience) GeoTIFF directory, with sub-directories by RGI Level-1 region
+dir_RGI                     = '00_rgi60/'; % Randolph Glacier Inventory version 6 directory, with sub-directories by RGI Level-1 region
 
 %% GlaThiDA (GTD) loading and analysis
 
@@ -382,7 +384,7 @@ if plotting
         end
         uistack(pmm{ii}, 'top')
         axis([0 thick_max 1 400])
-        set(gca, 'fontsize', 20, 'fontweight', 'bold', 'xtick', 0:100:1500, 'yscale', 'log', 'ytick', [1 10 100 400])
+        set(gca, 'fontsize', 20, 'fontweight', 'bold', 'xtick', 0:100:1500, 'yscale', 'log', 'ytick', [1 10 100 400], 'xticklabelrotation', 0)
         xlabel('Maximum modeled ice thickness (m)')
         ylabel('Number of larger glaciers')
         grid on
