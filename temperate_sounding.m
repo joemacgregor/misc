@@ -3,7 +3,7 @@
 % https://doi.org/10.5194/tc-2021-26).
 % 
 % Joe MacGregor (NASA/GSFC)
-% Last updated: 29 April 2021
+% Last updated: 4 May 2021
 
 clear
 
@@ -282,7 +282,7 @@ if plotting
         set(gca, 'fontsize', 20, 'fontweight', 'bold', 'xscale', 'log', 'xticklabel', {'1' '10' '100' '1000'}, 'linewidth', 1, 'layer', 'top')
         xlabel('Center frequency (MHz)')
         ylabel({'Maximum ice thickness measured (m)'})
-        caxis([1 (length(year_range) + 1)])        
+        caxis([1 (length(year_range) + 1)])
         switch ii
             case 1
                 line([1 1e3], (1500 - (500 .* log10([1 1e3]))), 'color', 'k', 'linestyle', '--', 'linewidth', 2)
@@ -308,8 +308,8 @@ if plotting
                                  'tag', [num2str(jj) ': GlaThiDa ID ' num2str(GTD_T.GlaThiDa_ID(jj)) ' ' GTD_T.GLACIER_NAME{jj}])
                     end
                 end
-                line(3.5, 440, 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 12, 'markerfacecolor', colors(end, :), 'tag', 'Pritchard et al. (2020, Annals of Glaciology)')
-                line(10, 318, 'color', 'k', 'linewidth', 0.5, 'marker', '^', 'markersize', 12, 'markerfacecolor', colors(end, :), 'tag', 'Pelto et al. (2020, Journal of Glaciology)')
+                line(3.5, 440, 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(end, :), 'tag', 'Pritchard et al. (2020, Annals of Glaciology)')
+                line((10 * sqrt(3.2)), 318, 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(end, :), 'tag', 'Pelto et al. (2020, Journal of Glaciology), corrected to air')
                 line(1.875, 1460, 'color', 'k', 'linewidth', 0.5, 'marker', 'v', 'markersize', 12, 'markerfacecolor', colors(end, :), 'tag', 'M. Truffer and J.W. Holt (2020, pers. comm.) for UAF HF radar sounder on Bagley Icefield')
                 pg          = plot(NaN, NaN, 'kv', 'linewidth', 0.5, 'markersize', 12);
                 ph          = plot(NaN, NaN, 'ko', 'linewidth', 0.5, 'markersize', 12);
@@ -347,11 +347,12 @@ if plotting
                 end                
                 pt2         = plot(NaN, NaN, 'ko', 'linewidth', 0.5, 'markersize', 12, 'markerfacecolor', 'r');
                 pc2         = plot(NaN, NaN, 'ko', 'linewidth', 0.5, 'markersize', 8, 'markerfacecolor', [0.75 0.75 1]);
-                plot(1.875, 1460, 'kv', 'markersize', 12, 'markerfacecolor', 'r')
+                plot(1.875, 1460, 'kv', 'markersize', 12, 'markerfacecolor', 'r') % M. Truffer and J.W. Holt (2020, pers. comm.) for UAF HF radar sounder on Bagley Icefield
+                plot((10 * sqrt(3.2)), 318, 'kv', 'markersize', 12, 'markerfacecolor', 'r') % Pelto et al. (2020, Journal of Glaciology), corrected to air
                 text(2.9, 1406, {'temperate glacier'; 'empirical envelope'}, 'color', 'r', 'fontsize', 20, 'fontweight', 'bold', 'rotation', -30)
                 legend([pt2 pc2], {'temperate' 'cold'}, 'location', 'northeast', 'fontsize', 20)
         end
-        text(0.45, 1600, ['(' letters(ii) ')'], 'fontsize', 20, 'fontweight', 'bold')        
+        text(0.45, 1600, ['(' letters(ii) ')'], 'fontsize', 20, 'fontweight', 'bold')
         title(titles{ii}, 'fontsize', 20, 'fontweight', 'bold')
         grid on
         box on
@@ -379,7 +380,7 @@ if plotting
         [pm{ii}, pmm{ii}]   = deal(NaN(1, length(idx_RGI_temperate_disp{ii})));
         for jj = 1:length(idx_RGI_temperate_disp{ii})
             histogram(thick_F19_max{idx_RGI_temperate_disp{ii}(jj)}(idx_F19_large{idx_RGI_temperate_disp{ii}(jj)}), thick_bin, 'normalization', 'count', 'displaystyle', 'stairs', 'edgecolor', colors(jj, :), 'linewidth', 3)
-            pmm{ii}(jj)     = line(prctile(thick_F19_max{idx_RGI_temperate_disp{ii}(jj)}(idx_F19_large{idx_RGI_temperate_disp{ii}(jj)}), 95), 1, 'marker', 'o', 'linestyle', 'none', 'color', [0.25 0.25 0.25], 'markerfacecolor', colors(jj, :), 'markersize', 12);
+            pmm{ii}(jj)     = line(repmat(prctile(thick_F19_max{idx_RGI_temperate_disp{ii}(jj)}(idx_F19_large{idx_RGI_temperate_disp{ii}(jj)}), 95), 1, 2), [1 400], 'marker', 'o', 'linestyle', 'none', 'color', [0.25 0.25 0.25], 'markerfacecolor', colors(jj, :), 'markersize', 12);
             pm{ii}(jj)      = line(NaN, NaN, 'color', colors(jj, :), 'linewidth', 3);
         end
         uistack(pmm{ii}, 'top')
